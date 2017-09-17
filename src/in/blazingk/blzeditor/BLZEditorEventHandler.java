@@ -1,44 +1,53 @@
 package in.blazingk.blzeditor;
 
-import javax.swing.JFrame;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 import javax.swing.JOptionPane;
 
 import com.blazingkin.interpreter.executor.Executor;
 import com.blazingkin.interpreter.library.BlzEventHandler;
 
 public class BLZEditorEventHandler implements BlzEventHandler {
-
-	JFrame window;
-	OutputPanel output;
 	
-	int linesOut = 0;
-	public BLZEditorEventHandler(JFrame window){
-		this.window = window;
-		window.pack();
-		window.setVisible(true);
-		window.setSize(BLZEditor.outputWidth,BLZEditor.outputHeight);
-		output = new OutputPanel(window);
-		output.setSize(window.getSize());
-		window.getContentPane().setLayout(null);
-		window.addWindowListener(new java.awt.event.WindowAdapter() {
-		    @Override
-		    public void windowClosing(java.awt.event.WindowEvent windowEvent) {
-		        exitProgram("User requested Close");
-		    }
-		});
-		output.setBounds(0, 0, window.getWidth(), window.getHeight());
-		window.add(output);
-		
-		window.repaint();
-
+	String outputBuffer = "";
+	
+	private static boolean flushScheduled = false;
+	final Runnable flush = new Runnable() {
+		public void run() { 
+			try{
+				if (flushScheduled) {
+					GraphicsHandler.pushOutput(outputBuffer);
+					outputBuffer = "";
+					flushScheduled = false;
+				}
+			}catch(Exception e){
+				
+			}
+		}
+	};
+	private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+	final ScheduledFuture<?> beeperHandle =
+		       scheduler.scheduleAtFixedRate(flush, 100, 100, TimeUnit.MILLISECONDS);
+	
+	public BLZEditorEventHandler() {
 		
 	}
 	
 	@Override
 	public void print(String contents) {
-		output.addNewText(contents);
-		output.repaint();
-		window.repaint();
+		try{
+			outputBuffer += contents;
+			if (!flushScheduled){
+				
+			}
+			flushScheduled = true;
+		}catch(Exception e){
+			GraphicsHandler.pushOutput(contents);
+		}
+
 	}
 
 	@Override
